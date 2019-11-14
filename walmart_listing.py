@@ -76,23 +76,25 @@ headers = {
     'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
     'if-modified-since': 'Wed, 13 Nov 2019 09:31:09 GMT',
 }
-Image=[]
-Title=[]
-Prdurl=[]
+
+Image = []
+Title = []
+Prdurl = []
+Page = []
 
 # to find out the no of pages & product
-url="https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355"
+url = "https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355"
 resp = requests.get(url=url, headers=headers, cookies=cookies)
-tree=html.fromstring(resp.content)
-total=tree.xpath('//*[@id="shelf-sort-count"]/span[3]/text()')
-prd=total[0]
-prd=int(prd)
+tree = html.fromstring(resp.content)
+total = tree.xpath('//*[@id="shelf-sort-count"]/span[3]/text()')
+prd = total[0]
+Total_prd = int(prd)
 print ("Total products:{}".format(prd))
-page = int(math.ceil(prd/60)+1)
+page = int(math.ceil(Total_prd/60)+1)
 print ("Total Pages:{}".format(page))
 
 # loop to extract all the data for all pages
-for x in range(1,(page+1)):
+for x in range(1, (page+1)):
     no = str(x)
     url = "https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355/page-"+no
     response = requests.get(url=url, headers=headers, cookies=cookies)
@@ -101,9 +103,10 @@ for x in range(1,(page+1)):
     prd = re.compile('''detailUrl: "/en/ip/.*"''')
     id1 = response.content
     pid = prd.findall(id1)
-    for x in range(0,len(pid)):
-        pid[x]="https://www.walmart.ca/"+pid[x][13:-1]
+    for x in range(0, len(pid)):
+        pid[x] = "https://www.walmart.ca/"+pid[x][13:-1]
         Prdurl.append(pid[x])
+        Page.append(no)
     # print(len(Prdurl))
 
     # for title
@@ -127,7 +130,7 @@ print ("PRODUCT IMAGE:{}".format(Image))
 
 
 # to save the product url in csv file
-filename='walmart.csv'
+filename = 'walmart.csv'
 with open(filename, 'w') as f:
         writer = csv.writer(f)
         feilds = ['Product URL']
@@ -140,15 +143,19 @@ with open(filename, 'w') as f:
 # to save all the data in xlsx file
 workbook = xlsxwriter.Workbook('walmart_listing.xlsx')
 worksheet = workbook.add_worksheet()
-row = 0
+row = 1
 column = 0
-worksheet.write(row, column, "PRODUCT URL")
-worksheet.write(row, column+1, "PRODUCT TITLE")
-worksheet.write(row, column+2, "PRODUCT IMAGE URL")
-for x in range(0,824):
+head = 0
+worksheet.write(head, column, "PRODUCT URL")
+worksheet.write(head, column+1, "PRODUCT PAGE")
+worksheet.write(head, column+2, "PRODUCT TITLE")
+worksheet.write(head, column+3, "PRODUCT IMAGE URL")
+# to write in xlsx
+for x in range(0, Total_prd):
     worksheet.write(row, column, Prdurl[x])
-    worksheet.write(row, column+1, Title[x])
-    worksheet.write(row, column+2, Image[x])
+    worksheet.write(row, column+1, Page[x])
+    worksheet.write(row, column+2, Title[x])
+    worksheet.write(row, column+3, Image[x])
     row += 1
 # close it then only file will save
 workbook.close()
