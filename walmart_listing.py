@@ -4,6 +4,10 @@ import math
 import xlsxwriter
 import requests
 from lxml import html
+import configparser
+# path for the configure file
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 cookies = {
     'userSegment': '50-percent',
@@ -63,7 +67,6 @@ cookies = {
     's_gnr': '1573644895625-Repeat',
     '_4c_': 'jVTbbqMwEP2VCmn7VALGNxypqtJstRc1vey22kdkbDdYIYCMU5qt8u87TnNpV1ppeQDP8ZmDZ5jDazRUponGiHLMCBGECZadRQuz7qPxa%2BSsDo%2FnaByVSmvDFY4N4iIGpo5FTkmsUpIhhjChREZn0UvQylORM0IZpXhzFulmr6HNk1zV%2FiONcUZSoNk9S%2F69nyME%2B27YEfYbPEsR%2B0DdIkBV3Y76Gq1cDZKV910%2FTpJhGEaDrJfS%2BZGSiWmSUpbr7S0upa%2FifmGbWElnjlhyE%2BeY0qSTcxMjOJtqtQFNJEb5iELsf0OEcQrLzrV6pXzh112gDKY86fUCNrR5tsoUg9W%2BCrksTY9oZey88gCLN7RzgQKrwTa6HY5ZFOMjesgiOHBL1w69CZnTyrVLc8JzQFv4jNG1bVYvEDjzZJzbcv7dEFMb5V3bWNVD5SjFF1ZZfV6B5KcsDU0ovt4VD203ld7MW7curo4Zxa8ZvKe3flv9QXeHwVQBDMHt7OFHcXk1md7evDtLu2ysXzkT9339%2FlBl0vfJsLRKNlLL0OIEJd9%2FxtkI0VEaX4vHu6TnPEUYZ5ixXFB%2BMbm%2FPEenSzg4RRznGdTBWYYRFiznKaVECBTGBaM851jQ08n91XloYxcmMHS5bpWsQxlgj7Poy6R4%2FPY5NDvNWEZoLkbBMqBLCN9XNJtuKf%2F3Rkh6cHY%2BN25mfNWCzyCW2nrbNrKO3mzzzjE6fGpVy763Spt%2B4dsu2uymn2OOUUayPAc%2FeA8TD2ZIwwWM54OxyrTEWmEWY8NJTBhBsRSliDMhqdLKgMjBe%2BF3wBjJKKE7SZS%2FKW42fwA%3D',
 }
-
 headers = {
     'authority': 'www.walmart.ca',
     'upgrade-insecure-requests': '1',
@@ -81,81 +84,79 @@ Image = []
 Title = []
 Prdurl = []
 Page = []
+Total_prd=0
 
 # to find out the no of pages & product
-url = "https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355"
-resp = requests.get(url=url, headers=headers, cookies=cookies)
-tree = html.fromstring(resp.content)
-total = tree.xpath('//*[@id="shelf-sort-count"]/span[3]/text()')
-prd = total[0]
-Total_prd = int(prd)
-print ("Total products:{}".format(prd))
-page = int(math.ceil(Total_prd/60)+1)
-print ("Total Pages:{}".format(page))
+def path(url):
 
+    resp = requests.get(url=url, headers=headers, cookies=cookies)
+    tree = html.fromstring(resp.content)
+    total = tree.xpath('//*[@id="shelf-sort-count"]/span[3]/text()')
+    prd = total[0]
+    Total_prd = int(prd)
+    print ("Total products:{}".format(prd))
+    page = int(math.ceil(Total_prd / 60) + 1)
+    print ("Total Pages:{}".format(page))
+    fetching_loop(page)
+    return Total_prd
 # loop to extract all the data for all pages
-for x in range(1, (page+1)):
-    no = str(x)
-    url = "https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355/page-"+no
-    response = requests.get(url=url, headers=headers, cookies=cookies)
+def fetching_loop(page):
+    for x in range(1, (page + 1)):
+        no = str(x)
+        url = "https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355/page-" + no
+        response = requests.get(url=url, headers=headers, cookies=cookies)
 
-    # for product url
-    prd = re.compile('''detailUrl: "/en/ip/.*"''')
-    id1 = response.content
-    pid = prd.findall(id1)
-    for x in range(0, len(pid)):
-        pid[x] = "https://www.walmart.ca/"+pid[x][13:-1]
-        Prdurl.append(pid[x])
-        Page.append(no)
-    # print(len(Prdurl))
+        # for product url
+        prd = re.compile(config['xpath']['prd_url'])
+        id1 = response.content
+        pid = prd.findall(id1)
+        for x in range(0, len(pid)):
+            pid[x] = "https://www.walmart.ca/" + pid[x][13:-1]
+            Prdurl.append(pid[x])
+            Page.append(no)
+        # print(len(Prdurl))
 
-    # for title
-    tree=html.fromstring(response.content)
-    title=tree.xpath('//article/a/div[3]/div[1]/div[1]/h2/text()')
-    for x in range(0,len(title)):
-        Title.append(title[x])
-    # print (len(Title))
+        # for title
+        tree = html.fromstring(response.content)
+        title = tree.xpath(config['xpath']['title'])
+        for x in range(0, len(title)):
+            Title.append(title[x])
+        # print (len(Title))
 
-    # for image url
-    img=tree.xpath('//article/a/div[2]/div[2]/img/@data-original')
-    for x in range(0,len(img)):
-        img[x]="https:"+img[x]
-        Image.append(img[x])
-    # print (len(Image))
-
-
-print ("PRODUCT TITLE:{}".format(Title))
-print ("PRODUCT URL:{}".format(Prdurl))
-print ("PRODUCT IMAGE:{}".format(Image))
-
-
-# to save the product url in csv file
-filename = 'walmart.csv'
-with open(filename, 'w') as f:
-        writer = csv.writer(f)
-        feilds = ['Product URL']
-        writer.writerow(feilds)
-        for x in Prdurl:
-            rows = [x]
-            writer.writerow(rows)
-
-
+        # for image url
+        img = tree.xpath(config['xpath']['img_url'])
+        for x in range(0, len(img)):
+            img[x] = "https:" + img[x]
+            Image.append(img[x])
+        # print (len(Image))
+# to print all the data
+def print_data(Title,Prdurl,Image):
+    print ("PRODUCT TITLE:{}".format(Title))
+    print ("PRODUCT URL:{}".format(Prdurl))
+    print ("PRODUCT IMAGE:{}".format(Image))
 # to save all the data in xlsx file
-workbook = xlsxwriter.Workbook('walmart_listing.xlsx')
-worksheet = workbook.add_worksheet()
-row = 1
-column = 0
-head = 0
-worksheet.write(head, column, "PRODUCT URL")
-worksheet.write(head, column+1, "PRODUCT PAGE")
-worksheet.write(head, column+2, "PRODUCT TITLE")
-worksheet.write(head, column+3, "PRODUCT IMAGE URL")
-# to write in xlsx
-for x in range(0, Total_prd):
-    worksheet.write(row, column, Prdurl[x])
-    worksheet.write(row, column+1, Page[x])
-    worksheet.write(row, column+2, Title[x])
-    worksheet.write(row, column+3, Image[x])
-    row += 1
-# close it then only file will save
-workbook.close()
+def csvfile(Total_prd):
+    workbook = xlsxwriter.Workbook('walmart_listing.xlsx')
+    worksheet = workbook.add_worksheet()
+    row = 1
+    column = 0
+    head = 0
+    worksheet.write(head, column, "PRODUCT URL")
+    worksheet.write(head, column + 1, "PRODUCT PAGE")
+    worksheet.write(head, column + 2, "PRODUCT TITLE")
+    worksheet.write(head, column + 3, "PRODUCT IMAGE URL")
+    # to write in xlsx
+    for x in range(0, Total_prd):
+        worksheet.write(row, column, Prdurl[x])
+        worksheet.write(row, column + 1, Page[x])
+        worksheet.write(row, column + 2, Title[x])
+        worksheet.write(row, column + 3, Image[x])
+        row += 1
+    # close it then only file will save
+    workbook.close()
+    
+    
+url = "https://www.walmart.ca/en/baby/baby-bath-skin-care/baby-bath/N-8355"
+Total_prd=path(url)
+print_data(Title,Prdurl,Image)
+csvfile(Total_prd)
